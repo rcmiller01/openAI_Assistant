@@ -1,0 +1,54 @@
+# Development Docker Compose Override
+# Use: docker-compose -f compose.core1.yml -f compose.dev.yml up
+
+version: '3.8'
+
+services:
+  api:
+    # Mount source code for hot reload in development
+    volumes:
+      - ../:/app
+      - /srv/work:/work:ro
+    
+    # Override environment for development
+    environment:
+      - APP_ENV=dev
+      - LOG_LEVEL=DEBUG
+    
+    # Use uvicorn with reload
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+    
+    # Expose ports for direct access in development
+    ports:
+      - "8080:8080"
+    
+    # Less strict resource limits for development
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+
+  postgres:
+    # Expose port for database tools in development
+    ports:
+      - "5432:5432"
+
+  redis:
+    # Expose port for redis-cli in development
+    ports:
+      - "6379:6379"
+
+  n8n:
+    # Expose port for n8n UI in development
+    ports:
+      - "5678:5678"
+    
+    # Disable auth in development (optional, use with caution)
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+
+  # Remove backup service in development
+  postgres-backup:
+    profiles:
+      - production

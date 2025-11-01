@@ -6,14 +6,14 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: core1-api
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     environment:
-      - APP_ENV=dev
+      - APP_ENV=${APP_ENV:-prod}
       - APP_HOST=0.0.0.0
       - APP_PORT=8080
       - API_KEY=${API_KEY}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB}
@@ -23,11 +23,15 @@ services:
       - REDIS_PORT=6379
       - FETCH_DOMAIN_ALLOWLIST=${FETCH_DOMAIN_ALLOWLIST}
       - SSH_HOSTS_ALLOWLIST=${SSH_HOSTS_ALLOWLIST}
-      - FS_ROOT=${FS_ROOT}
+      - FS_ROOT=${FS_ROOT:-/work}
       - CORS_ORIGINS=${CORS_ORIGINS}
+      - N8N_API_URL=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY}
+      - VAULTWARDEN_URL=${VAULTWARDEN_URL}
+      - VAULTWARDEN_TOKEN=${VAULTWARDEN_TOKEN}
     volumes:
-      - ../:/app
       - /srv/work:/work:ro  # Read-only filesystem access
+      - api_logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,12 +39,27 @@ services:
         condition: service_started
     networks:
       - core
+      - edge
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
 
   postgres:
     image: pgvector/pgvector:pg16
@@ -49,62 +68,160 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - postgres_backups:/backups
     networks:
       - core
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
     container_name: core1-redis
-    ports:
-      - "6379:6379"
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 512mb --maxmemory-policy allkeys-lru
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
     networks:
       - core
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 5s
 
   n8n:
     image: n8nio/n8n:latest
     container_name: core1-n8n
-    ports:
-      - "5678:5678"
+    expose:
+      - "5678"
     environment:
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678
-      - GENERIC_TIMEZONE=UTC
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://n8n:5678}
+      - GENERIC_TIMEZONE=${TIMEZONE:-UTC}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
-      - api
+      postgres:
+        condition: service_healthy
     networks:
       - core
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  postgres-backup:
+    image: postgres:16-alpine
+    container_name: core1-postgres-backup
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - BACKUP_KEEP_DAYS=7
+    volumes:
+      - postgres_backups:/backups
+      - ./scripts/backup-postgres.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "0 2 * * * /backup.sh" | crontab -
+        crond -f -l 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - core
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   core:
     driver: bridge
+  edge:
+    external: true
+    name: core3_edge
 
 volumes:
   postgres_data:
     driver: local
+  postgres_backups:
+    driver: local
   redis_data:
     driver: local
   n8n_data:
+    driver: local
+  api_logs:
     driver: local
