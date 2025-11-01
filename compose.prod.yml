@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: opa_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-opa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opa_password}
+      POSTGRES_DB: ${POSTGRES_DB:-opa}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opa}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - opa_network
+    restart: unless-stopped
+
+  # Redis for caching and rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: opa_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - opa_network
+    restart: unless-stopped
+
+  # Orchestrator backend
+  backend:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    container_name: opa_backend
+    environment:
+      # Database
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-opa}
+      POSTGRES_USER: ${POSTGRES_USER:-opa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opa_password}
+      
+      # Redis
+      REDIS_URL: redis://redis:6379
+      
+      # API Configuration
+      API_KEY: ${API_KEY:-your-secret-api-key-change-me}
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: json
+      
+      # Security
+      HMAC_SECRET: ${HMAC_SECRET:-change-me-in-production}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      DEFAULT_RATE_LIMIT: ${DEFAULT_RATE_LIMIT:-60}
+      
+      # Tracing
+      ENABLE_TRACING: ${ENABLE_TRACING:-false}
+      OTEL_SERVICE_NAME: orchestrator
+      
+      # Embeddings
+      EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+      EMBEDDING_DIMENSIONS: 384
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - opa_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  opa_network:
+    driver: bridge

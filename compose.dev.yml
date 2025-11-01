@@ -1,0 +1,94 @@
+version: '3.8'
+
+# Development environment with hot reload and dev tools
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: opa_postgres_dev
+    environment:
+      POSTGRES_USER: opa
+      POSTGRES_PASSWORD: opa_password
+      POSTGRES_DB: opa
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opa"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - opa_dev_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: opa_redis_dev
+    ports:
+      - "6379:6379"
+    networks:
+      - opa_dev_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+      args:
+        - DEV_MODE=true
+    container_name: opa_backend_dev
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: opa
+      POSTGRES_USER: opa
+      POSTGRES_PASSWORD: opa_password
+      REDIS_URL: redis://redis:6379
+      API_KEY: dev-api-key
+      APP_ENV: dev
+      LOG_LEVEL: DEBUG
+      LOG_FORMAT: text
+      RATE_LIMIT_ENABLED: false
+      ENABLE_TRACING: false
+    volumes:
+      # Mount source for hot reload
+      - ./backend/app:/app/app:ro
+      - ./backend/tests:/app/tests:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - opa_dev_network
+
+  # Optional: Adminer for database management
+  adminer:
+    image: adminer:latest
+    container_name: opa_adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    networks:
+      - opa_dev_network
+
+  # Optional: Redis Commander
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: opa_redis_commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - opa_dev_network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+
+networks:
+  opa_dev_network:
+    driver: bridge

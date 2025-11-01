@@ -10,9 +10,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
 )
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import text, Column, Integer, String, Text, DateTime, ARRAY
-from sqlalchemy.dialects.postgresql import VECTOR
-from sqlalchemy.sql import func
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -47,16 +45,12 @@ class Base(DeclarativeBase):
     pass
 
 
-class MemoryItem(Base):
-    """Memory storage table with vector support."""
-    __tablename__ = "memory_items"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    text = Column(Text, nullable=False)
-    tags = Column(ARRAY(String), default=[], nullable=False)
-    ts = Column(DateTime(timezone=True), server_default=func.now())
-    speaker_id = Column(String, nullable=True)
-    embedding = Column(VECTOR(384), nullable=True)  # Placeholder dimension
+# Import models after Base is defined to avoid circular imports
+# Models are imported at module level for SQLAlchemy to discover them
+try:
+    from app.models import MemoryItem, Job  # noqa: F401
+except ImportError:
+    logger.warning("Could not import models - running without database?")
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
