@@ -1,0 +1,347 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AI Assistant Orchestrator API",
+    "description": "Unified orchestration API for memory, workflows, SSH, and more. Single endpoint handles all intents with intelligent routing.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://your-domain.com",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Development server"
+    }
+  ],
+  "paths": {
+    "/orchestrate": {
+      "post": {
+        "operationId": "orchestrate",
+        "summary": "Execute any intent (memory, workflows, SSH, etc.)",
+        "description": "Unified endpoint that routes intents to appropriate execution engine. Supports memory operations, Gmail workflows, SSH commands, and more. Automatically selects best execution mode (local agent, n8n workflow, or MCP adapter).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrchestrateRequest"
+              },
+              "examples": {
+                "memory_write": {
+                  "summary": "Store memory with embeddings",
+                  "value": {
+                    "intent": "memory.write",
+                    "inputs": {
+                      "text": "The user prefers dark mode and uses Python for data analysis",
+                      "tags": ["preferences", "user-profile"]
+                    },
+                    "mode": "auto"
+                  }
+                },
+                "memory_search": {
+                  "summary": "Search memories semantically",
+                  "value": {
+                    "intent": "memory.search",
+                    "inputs": {
+                      "query": "What programming language does the user prefer?",
+                      "k": 5,
+                      "tags": ["preferences"]
+                    },
+                    "mode": "auto"
+                  }
+                },
+                "gmail_triage": {
+                  "summary": "Organize Gmail inbox",
+                  "value": {
+                    "intent": "gmail.triage",
+                    "inputs": {
+                      "query": "is:unread in:inbox older_than:2d",
+                      "label": "INBOX/Processed",
+                      "dry_run": true,
+                      "max_results": 20
+                    },
+                    "mode": "flow"
+                  }
+                },
+                "ssh_peek": {
+                  "summary": "Safe read-only SSH command",
+                  "value": {
+                    "intent": "ssh.exec.peek",
+                    "inputs": {
+                      "host": "server.example.com",
+                      "command": "df -h",
+                      "user": "admin"
+                    },
+                    "mode": "agent"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful execution (sync or async)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrchestrateResponse"
+                },
+                "examples": {
+                  "sync_success": {
+                    "summary": "Fast operation completed synchronously",
+                    "value": {
+                      "job_id": "job_abc123",
+                      "status": "success",
+                      "result": {
+                        "item_id": "mem_12345",
+                        "status": "stored",
+                        "text_length": 62,
+                        "tags": ["preferences", "user-profile"]
+                      },
+                      "mode": "agent",
+                      "duration_ms": 45,
+                      "idempotency_key": "idem_xyz789"
+                    }
+                  },
+                  "async_accepted": {
+                    "summary": "Long operation accepted for background processing",
+                    "value": {
+                      "job_id": "job_def456",
+                      "status": "accepted",
+                      "message": "Job accepted for async processing",
+                      "mode": "flow",
+                      "callback_url": "https://your-domain.com/callbacks/ingest"
+                    }
+                  },
+                  "dry_run": {
+                    "summary": "Dry run preview",
+                    "value": {
+                      "job_id": "job_ghi789",
+                      "status": "success",
+                      "result": {
+                        "dry_run": true,
+                        "would_execute": {
+                          "host": "server.example.com",
+                          "command": "rm /tmp/file"
+                        },
+                        "note": "Set confirm_dangerous=true to execute",
+                        "hint": "Use ssh.exec.peek for read-only operations"
+                      },
+                      "mode": "agent"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (invalid intent or inputs)"
+          },
+          "401": {
+            "description": "Unauthorized (missing or invalid API key)"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/jobs/{job_id}": {
+      "get": {
+        "operationId": "getJobStatus",
+        "summary": "Get job status and result",
+        "description": "Poll status of async job. Returns last known state and result if completed.",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Job ID returned from /orchestrate"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "OrchestrateRequest": {
+        "type": "object",
+        "required": ["intent", "inputs"],
+        "properties": {
+          "intent": {
+            "type": "string",
+            "description": "Intent pattern identifying the operation to execute",
+            "enum": [
+              "memory.write",
+              "memory.search",
+              "memory.query",
+              "gmail.triage",
+              "gmail.search",
+              "slack.summarize",
+              "slack.post",
+              "ssh.exec",
+              "ssh.exec.peek",
+              "digest.daily",
+              "digest.weekly"
+            ],
+            "example": "memory.write"
+          },
+          "inputs": {
+            "type": "object",
+            "description": "Intent-specific parameters. Structure varies by intent.",
+            "additionalProperties": true,
+            "example": {
+              "text": "Important information to remember",
+              "tags": ["example"]
+            }
+          },
+          "mode": {
+            "type": "string",
+            "description": "Execution mode (auto-selected if omitted)",
+            "enum": ["auto", "flow", "mcp", "agent"],
+            "default": "auto",
+            "example": "auto"
+          },
+          "callback_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL for async result delivery (optional)",
+            "example": "https://your-app.com/webhook/results"
+          },
+          "context": {
+            "type": "object",
+            "description": "Additional context for tracing and metadata",
+            "additionalProperties": true,
+            "example": {
+              "user_id": "user_123",
+              "session_id": "sess_abc"
+            }
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Optional key for idempotent requests (auto-generated if omitted)",
+            "example": "idem_custom_key_123"
+          }
+        }
+      },
+      "OrchestrateResponse": {
+        "type": "object",
+        "required": ["job_id", "status"],
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "Unique job identifier for tracking",
+            "example": "job_abc123"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "accepted", "error"],
+            "description": "Execution status",
+            "example": "success"
+          },
+          "result": {
+            "type": "object",
+            "description": "Result data (present for sync success)",
+            "additionalProperties": true
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message (present for errors)"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable status message"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["flow", "mcp", "agent"],
+            "description": "Actual execution mode used"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "description": "Execution time in milliseconds (for sync operations)"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Idempotency key for this request"
+          },
+          "callback_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Callback URL (for async operations)"
+          }
+        }
+      },
+      "JobStatus": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "example": "job_abc123"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "success", "error"],
+            "example": "success"
+          },
+          "result": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "error": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duration_ms": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key authentication using Bearer token. Get your API key from the admin dashboard."
+      }
+    }
+  }
+}

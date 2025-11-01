@@ -12,7 +12,17 @@ from fastapi.responses import JSONResponse
 
 from app.core.db import setup_pgvector, cleanup_database
 from app.core.scheduler import start_scheduler, stop_scheduler
-from app.routers import memory, health, fs, fetch, ssh, agents, prompts, feedback
+from app.routers import (
+    memory,
+    health,
+    fs,
+    fetch,
+    ssh,
+    agents,
+    prompts,
+    feedback,
+    orchestrate,
+)
 from app.schemas.common import ErrorResponse
 
 # Configure logging
@@ -95,6 +105,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 # Mount routers
 app.include_router(health.router)  # Health endpoints at root
+app.include_router(orchestrate.router)  # Orchestrate at root
 app.include_router(memory.router, prefix="/api/v1")
 app.include_router(fs.router, prefix="/api/v1")
 app.include_router(fetch.router, prefix="/api/v1")
@@ -102,6 +113,7 @@ app.include_router(ssh.router, prefix="/api/v1")
 app.include_router(agents.router, prefix="/api/v1")
 app.include_router(prompts.router, prefix="/api/v1")
 app.include_router(feedback.router, prefix="/api/v1")
+
 
 if __name__ == "__main__":
     import uvicorn

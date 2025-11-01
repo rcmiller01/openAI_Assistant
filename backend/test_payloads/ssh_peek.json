@@ -1,0 +1,10 @@
+{
+  "intent": "ssh.exec.peek",
+  "inputs": {
+    "host": "server.example.com",
+    "command": "df -h",
+    "user": "admin",
+    "port": 22
+  },
+  "mode": "agent"
+}

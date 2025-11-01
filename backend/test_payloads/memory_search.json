@@ -1,0 +1,9 @@
+{
+  "intent": "memory.search",
+  "inputs": {
+    "query": "What programming language does the user prefer?",
+    "k": 5,
+    "tags": ["preferences", "python"]
+  },
+  "mode": "agent"
+}

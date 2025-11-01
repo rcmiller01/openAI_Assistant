@@ -1,0 +1,277 @@
+{
+  "name": "Gmail Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gmail-triage",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "gmail-triage"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract inputs from webhook\nconst intent = $input.item.json.body.intent;\nconst inputs = $input.item.json.body.inputs || {};\nconst trace = $input.item.json.body.trace || {};\n\n// Validate intent\nif (intent !== 'gmail.triage') {\n  return {\n    json: {\n      status: 'error',\n      error: `Invalid intent: ${intent}. Expected gmail.triage`,\n      trace\n    }\n  };\n}\n\n// Extract and validate inputs\nconst query = inputs.query || 'is:unread';\nconst label = inputs.label;\nconst dry_run = inputs.dry_run || false;\nconst max_results = inputs.max_results || 20;\n\nreturn {\n  json: {\n    query,\n    label,\n    dry_run,\n    max_results,\n    trace,\n    request_id: trace.request_id,\n    job_id: trace.job_id\n  }\n};"
+      },
+      "id": "parse-inputs",
+      "name": "Parse Inputs",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": "={{ $json.max_results }}",
+        "simple": false,
+        "filters": {
+          "q": "={{ $json.query }}"
+        }
+      },
+      "id": "gmail-search",
+      "name": "Gmail Search",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node['Parse Inputs'].json.dry_run }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-dry-run",
+      "name": "Check Dry Run",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Dry run - return preview without making changes\nconst emails = $input.all();\nconst trace = $node['Parse Inputs'].json.trace;\nconst label = $node['Parse Inputs'].json.label;\n\nconst preview = emails.slice(0, 5).map(e => ({\n  id: e.json.id,\n  from: e.json.payload.headers.find(h => h.name === 'From')?.value,\n  subject: e.json.payload.headers.find(h => h.name === 'Subject')?.value,\n  date: e.json.payload.headers.find(h => h.name === 'Date')?.value\n}));\n\nreturn {\n  json: {\n    status: 'success',\n    result: {\n      dry_run: true,\n      found: emails.length,\n      would_apply_label: label,\n      preview: preview,\n      note: 'No changes made. Set dry_run=false to apply label.'\n    },\n    trace\n  }\n};"
+      },
+      "id": "dry-run-response",
+      "name": "Dry Run Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $node['Parse Inputs'].json.label }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "check-label",
+      "name": "Check Label Provided",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": ["={{ $node['Parse Inputs'].json.label }}"]
+      },
+      "id": "apply-label",
+      "name": "Apply Label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1250, 350],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Aggregate results\nconst labeled = $input.all();\nconst trace = $node['Parse Inputs'].json.trace;\nconst query = $node['Parse Inputs'].json.query;\nconst label = $node['Parse Inputs'].json.label;\n\nreturn {\n  json: {\n    status: 'success',\n    result: {\n      query: query,\n      found: labeled.length,\n      labeled: labeled.length,\n      label_id: label,\n      email_ids: labeled.map(e => e.json.id)\n    },\n    trace\n  }\n};"
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1450, 350]
+    },
+    {
+      "parameters": {
+        "functionCode": "// No label provided - just return counts\nconst emails = $input.all();\nconst trace = $node['Parse Inputs'].json.trace;\nconst query = $node['Parse Inputs'].json.query;\n\nconst preview = emails.slice(0, 5).map(e => ({\n  id: e.json.id,\n  from: e.json.payload.headers.find(h => h.name === 'From')?.value,\n  subject: e.json.payload.headers.find(h => h.name === 'Subject')?.value\n}));\n\nreturn {\n  json: {\n    status: 'success',\n    result: {\n      query: query,\n      found: emails.length,\n      labeled: 0,\n      preview: preview,\n      note: 'No label provided. Add label parameter to apply labels.'\n    },\n    trace\n  }\n};"
+      },
+      "id": "no-label-response",
+      "name": "No Label Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1250, 450]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Error handler\nconst error = $input.item.json.error || 'Unknown error';\nconst trace = $node['Parse Inputs']?.json?.trace || {};\n\nreturn {\n  json: {\n    status: 'error',\n    error: error.message || error,\n    trace\n  }\n};"
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 550]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Inputs": {
+      "main": [
+        [
+          {
+            "node": "Gmail Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Search": {
+      "main": [
+        [
+          {
+            "node": "Check Dry Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Dry Run": {
+      "main": [
+        [
+          {
+            "node": "Dry Run Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Label Provided",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dry Run Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Label Provided": {
+      "main": [
+        [
+          {
+            "node": "Apply Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Label Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Label": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Label Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-01T00:00:00.000Z",
+  "versionId": "1"
+}

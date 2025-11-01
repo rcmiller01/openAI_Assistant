@@ -1,0 +1,14 @@
+{
+  "intent": "gmail.triage",
+  "inputs": {
+    "query": "is:unread in:inbox older_than:2d",
+    "label": "INBOX/Processed",
+    "dry_run": true,
+    "max_results": 20
+  },
+  "mode": "flow",
+  "context": {
+    "user_id": "test_user_123",
+    "session_id": "test_session_abc"
+  }
+}

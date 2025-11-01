@@ -1,0 +1,10 @@
+{
+  "intent": "ssh.exec",
+  "inputs": {
+    "host": "server.example.com",
+    "command": "rm -rf /tmp/test",
+    "user": "admin",
+    "confirm_dangerous": false
+  },
+  "mode": "agent"
+}

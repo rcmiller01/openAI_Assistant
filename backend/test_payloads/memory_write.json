@@ -1,0 +1,9 @@
+{
+  "intent": "memory.write",
+  "inputs": {
+    "text": "The user prefers dark mode and uses Python for data analysis. They work with pandas, numpy, and scikit-learn regularly.",
+    "tags": ["preferences", "user-profile", "python"],
+    "speaker_id": "user_123"
+  },
+  "mode": "agent"
+}
