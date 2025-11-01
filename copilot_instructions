@@ -1,0 +1,244 @@
+
+You are Copilot. Follow these instructions exactly to scaffold the repo, generate docker-compose files, and complete the Pre–Week 1 tasks for the “OpenAI Personal Assistant Environment”. The repository already contains a README.md with the high-level plan—assume it’s present and reference it as needed.
+
+# High-level goals
+- Implement and locally test the Memory Service (BM25 + pgvector hybrid) and the FastAPI interface **before Week 1**.
+- Prepare two host-specific compose stacks for **Core1** (API/memory) and **Core3** (edge/proxy).
+- Include **n8n** (automation) and **Redis** (optional) in Week 1 scope.
+- Export an OpenAPI spec consumable by ChatGPT Actions.
+- Enforce security: API key/Bearer auth, allow-lists, and dry-run confirmation for risky operations.
+
+# Target structure
+Create exactly this structure (generate files where content is specified; create empty dirs otherwise):
+```
+/backend
+  /app
+    /core
+      db.py
+      allowlists.py
+      rate_limit.py
+      scheduler.py
+    /deps
+      auth.py
+    /routers
+      memory.py
+      fs.py
+      ssh.py
+      fetch.py
+    /schemas
+      memory.py
+      common.py
+    main.py
+  /openapi
+    actions.json
+  /tests
+    test_memory.py
+    conftest.py
+  /docker
+    compose.core1.yml
+    compose.core3.yml
+.env.example
+/docs
+  ACTIONS_SETUP.md
+  SECURITY.md
+  GMAIL_PUSH_SETUP.md (placeholder)
+/scripts
+  dev_seed_memory.py
+  export_openapi.sh
+  wait-for-it.sh
+README.md (already present)
+```
+
+# Global settings & conventions
+- Python 3.11, FastAPI, Uvicorn, SQLAlchemy, psycopg, pgvector, Pydantic v2, httpx.
+- Lint/format: Ruff + Black.
+- Testing: Pytest.
+- All destructive operations must accept `confirm=true` and otherwise return a dry-run summary.
+- The Filesystem router will be **read-only** and rooted at `/work`. Deny `..` and symlink escapes.
+- SSH, Gmail, etc. are placeholders for later—stubs only this phase.
+- Use environment variables loaded from `.env`.
+
+# .env.example
+Create with the following keys and placeholder values:
+```
+APP_ENV=dev
+APP_HOST=0.0.0.0
+APP_PORT=8080
+API_KEY=replace-me-with-a-long-random-string
+LOG_LEVEL=INFO
+
+# Database
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=opa
+POSTGRES_USER=opa
+POSTGRES_PASSWORD=opa_password
+
+# Optional Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Security / allow-lists
+FETCH_DOMAIN_ALLOWLIST=example.com,api.github.com
+SSH_HOSTS_ALLOWLIST=core1,core3
+FS_ROOT=/work
+```
+
+# /backend/app/main.py
+Generate a minimal FastAPI app with:
+- Health endpoints: `GET /healthz`, `GET /version`.
+- Global exception logging.
+- API key/Bearer auth dependency (from `deps/auth.py`).
+- Router mounts: memory, fs, ssh, fetch (the latter three may be placeholders).
+- CORS: allow from ChatGPT domains; make it configurable (`CORS_ORIGINS` env).
+
+Expose OpenAPI at `/openapi.json`. Add a root `GET /` that returns a short JSON status.
+
+# /backend/app/deps/auth.py
+Provide an `api_auth` dependency:
+- Accept Authorization header: `Bearer <API_KEY>`.
+- Reject if missing or mismatched. Return 401 JSON error.
+- Include simple rate-limit hook (placeholder calling `core/rate_limit.py`).
+
+# /backend/app/core/db.py
+- Initialize async SQLAlchemy engine for Postgres.
+- Ensure `pgvector` extension enabled.
+- Provide `get_session()` dependency.
+- Include `setup_pgvector()` function to run on startup.
+
+# /backend/app/schemas/memory.py
+Pydantic v2 models:
+```
+class MemoryWriteIn(BaseModel): text: str; tags: list[str] = []; speaker_id: str | None = None; ts_iso: str | None = None
+class MemorySearchIn(BaseModel): query: str; since: str | None = None; until: str | None = None; tags: list[str] = []; top_k: int = 10
+class MemoryHit(BaseModel): id: int; text: str; score: float; tags: list[str]; ts_iso: str | None
+class MemorySearchOut(BaseModel): hits: list[MemoryHit]
+```
+
+# /backend/app/routers/memory.py
+Implement endpoints:
+- `POST /memory/write`: insert row with BM25 index + embedding vector.
+- `POST /memory/search`: hybrid BM25 + vector search.
+Use a simple table `memory_items(id serial, text text, tags text[], ts timestamptz, speaker_id text, embedding vector)`.
+
+For embeddings: implement a placeholder local embedder first (hash-based vector) so tests pass. Include a TODO to swap with a real model later (could be Ollama or an API).
+
+# /backend/app/routers/fs.py (stub for now)
+- `GET /fs/list?path&maxDepth=1` → list directories/files under `FS_ROOT` safely.
+- `GET /fs/read?path&bytes=65536` → return first N bytes; deny binary types for now (text-only heuristic).
+
+# /backend/app/routers/fetch.py (stub)
+- `GET /fetch/get?url&max_bytes=262144`:
+  - Enforce HTTPS only.
+  - Parse hostname; verify against `FETCH_DOMAIN_ALLOWLIST`.
+  - Block private/metadata IP ranges with DNS resolution.
+  - Stream up to `max_bytes`. Return text, content-type, and size.
+
+# /backend/app/routers/ssh.py (stub)
+- `POST /ssh/exec { host, cmd, timeout_sec, confirm }`:
+  - Verify `host` in `SSH_HOSTS_ALLOWLIST`.
+  - Verify `cmd` against a minimal allow-list in `core/allowlists.py`.
+  - If `confirm` != true, return dry-run summary; otherwise, execute via `asyncio.create_subprocess_exec` with timeout.
+
+# /backend/app/core/allowlists.py
+- Provide: `SAFE_COMMANDS = {"uptime", "df -h", "whoami"}` (placeholder).
+- Provide function `is_safe_command(cmd: str) -> bool`.
+
+# /backend/app/core/rate_limit.py
+- Placeholder with a no-op `check_quota(key: str) -> None` and a TODO to integrate Redis token bucket.
+
+# /backend/app/core/scheduler.py
+- Placeholder APScheduler init with a sample daily job `memory_digest()` that logs a message.
+
+# /backend/app/schemas/common.py
+- Common error/response models.
+
+# /backend/tests/test_memory.py
+Pytest covering:
+- Write a few items; search BM25; search vector; search hybrid.
+- Ensure tags/since/until filters work.
+- Ensure invalid inputs handled gracefully.
+
+# /backend/tests/conftest.py
+- Provide an async test client (httpx + asgi-lifespan).
+- Spin up a temporary Postgres (assume docker-compose up for local, or mark tests xfail if DB unreachable).
+- Set API_KEY in test env.
+
+# /backend/scripts/dev_seed_memory.py
+- Seed several memory items for manual testing.
+
+# /backend/scripts/export_openapi.sh
+- Curl `http://localhost:8080/openapi.json` and write to `/backend/openapi/actions.json`.
+
+# /backend/scripts/wait-for-it.sh
+- Standard wait script to gate service startup (use a commonly accepted MIT-licensed snippet).
+
+# Docker: compose files
+Create two compose files.
+
+## /backend/docker/compose.core1.yml
+Services:
+- `api`: FastAPI (uvicorn), env from `.env`, mounts `../:/app` for dev, depends_on `postgres` (and `redis` optional), network `core`.
+- `postgres`: postgres:16 with `pgvector` extension; healthcheck; volume for data.
+- `redis` (optional): redis:7.
+- `n8n`: n8nio/n8n with volume; depends_on `api`; internal network to call the API.
+- A bind mount for `/work` from host (read-only) if available: `type: bind, source: /srv/work, target: /work, read_only: true`
+Networks: `core`.
+
+## /backend/docker/compose.core3.yml
+Services:
+- `nginx`: nginx:alpine, mounts `./nginx/conf.d` and TLS certs; reverse-proxy to `api` on Core1 (use hostname/IP of Core1).
+- `cloudflared`: cloudflare/cloudflared tunnel with config file mounted; depends_on `nginx`.
+Volumes for certs and nginx configs. Network `edge`.
+
+Provide sample Nginx server block (`/backend/docker/nginx/conf.d/fastapi.conf`) that:
+- Listens 443, TLS.
+- Proxies `/` to `http://core1-api:8080`.
+- Adds rate-limit zone (basic).
+- Passes `Authorization` header through.
+(Include a plaintext block to be adapted.)
+
+# Pre–Week 1 tasks (automate with Copilot)
+1) Implement Memory Service (models, router, simple embedder, DB init).
+2) Implement FastAPI core, health/version, auth dependency, router mounts.
+3) Add tests for Memory; ensure `pytest -q` passes locally.
+4) Create `compose.core1.yml`, `compose.core3.yml`, and an Nginx config stub.
+5) Add scripts: `export_openapi.sh`, `dev_seed_memory.py`, `wait-for-it.sh`.
+6) Run local stack for Core1 only: `docker compose -f backend/docker/compose.core1.yml up -d`.
+7) Verify `GET /healthz` and `GET /openapi.json`.
+8) Export Actions spec: `bash backend/scripts/export_openapi.sh`.
+9) (Optional) Bring up Core3 stack with Nginx + Cloudflare Tunnel; validate external HTTPS.
+
+# Acceptance criteria
+- `POST /memory/write` persists data and returns an id.
+- `POST /memory/search` returns ranked results, honoring tags/since/until.
+- `GET /openapi.json` exports successfully; `openapi/actions.json` is created via script.
+- Compose (Core1) starts successfully; API is reachable on localhost:8080.
+- Auth rejects requests without/with wrong token, accepts with correct Bearer token.
+- Linting (ruff) and tests (pytest) pass.
+
+# Commands for the developer
+- Start Core1 stack:
+  ```
+  docker compose -f backend/docker/compose.core1.yml up -d --build
+  ```
+- Seed memory:
+  ```
+  docker exec -it core1-api python /app/backend/scripts/dev_seed_memory.py
+  ```
+- Run tests locally (outside docker if preferred):
+  ```
+  uv venv && uv pip install -r requirements.txt
+  pytest -q
+  ```
+- Export OpenAPI for Actions:
+  ```
+  bash backend/scripts/export_openapi.sh
+  ```
+
+# Notes for future phases
+- Gmail, SSH, Fetch to be implemented with confirm/dry-run patterns and strict allow-lists.
+- Replace placeholder embedder with real embeddings (e.g., local Ollama or API) and add pgvector index ops.
+- Add Cloudflare Access + mTLS if desired before enabling any mutating endpoints externally.
+
+# End of instructions
