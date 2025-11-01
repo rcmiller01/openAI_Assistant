@@ -12,8 +12,8 @@ from fastapi.responses import JSONResponse
 
 from app.core.db import setup_pgvector, cleanup_database
 from app.core.scheduler import start_scheduler, stop_scheduler
-from app.routers import memory
-from app.schemas.common import HealthResponse, VersionResponse, ErrorResponse
+from app.routers import memory, health, fs, fetch, ssh, agents, prompts, feedback
+from app.schemas.common import ErrorResponse
 
 # Configure logging
 logging.basicConfig(
@@ -93,53 +93,15 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     )
 
 
-# Root endpoint
-@app.get("/", response_model=Dict[str, Any])
-async def root() -> Dict[str, Any]:
-    """Root endpoint with API status."""
-    return {
-        "service": "OpenAI Personal Assistant API",
-        "version": APP_VERSION,
-        "environment": APP_ENV,
-        "status": "running",
-        "timestamp": datetime.utcnow().isoformat()
-    }
-
-
-# Health check endpoint
-@app.get("/healthz", response_model=HealthResponse)
-async def health_check() -> HealthResponse:
-    """Health check endpoint."""
-    # TODO: Add actual database connectivity check
-    database_status = "connected"  # Placeholder
-    redis_status = None  # Placeholder
-    
-    return HealthResponse(
-        status="healthy",
-        timestamp=datetime.utcnow().isoformat(),
-        version=APP_VERSION,
-        database=database_status,
-        redis=redis_status
-    )
-
-
-# Version endpoint
-@app.get("/version", response_model=VersionResponse)
-async def version_info() -> VersionResponse:
-    """Version information endpoint."""
-    return VersionResponse(
-        version=APP_VERSION,
-        environment=APP_ENV
-    )
-
-
 # Mount routers
+app.include_router(health.router)  # Health endpoints at root
 app.include_router(memory.router, prefix="/api/v1")
-
-# TODO: Add other routers when implemented
-# app.include_router(fs.router, prefix="/api/v1")
-# app.include_router(fetch.router, prefix="/api/v1")
-# app.include_router(ssh.router, prefix="/api/v1")
+app.include_router(fs.router, prefix="/api/v1")
+app.include_router(fetch.router, prefix="/api/v1")
+app.include_router(ssh.router, prefix="/api/v1")
+app.include_router(agents.router, prefix="/api/v1")
+app.include_router(prompts.router, prefix="/api/v1")
+app.include_router(feedback.router, prefix="/api/v1")
 
 if __name__ == "__main__":
     import uvicorn

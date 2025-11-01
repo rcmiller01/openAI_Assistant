@@ -4,7 +4,11 @@ import os
 import logging
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,
+)
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text, Column, Integer, String, Text, DateTime, ARRAY
 from sqlalchemy.dialects.postgresql import VECTOR
