@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenAI Assistant Admin Settings</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="logo">AI</div>
+          <div class="brand-meta">
+            <span class="brand-name">OpenAI Assistant</span>
+            <span class="brand-tag">Admin Console</span>
+          </div>
+        </div>
+        <nav class="sidebar-nav">
+          <button class="nav-item active">Settings</button>
+          <button class="nav-item">Monitoring</button>
+          <button class="nav-item">Usage</button>
+          <button class="nav-item">Billing</button>
+          <button class="nav-item">Documentation</button>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="workspace">
+            <span class="workspace-label">Workspace</span>
+            <span class="workspace-name">Product Team</span>
+          </div>
+          <div class="user">
+            <div class="avatar">AK</div>
+            <div class="user-meta">
+              <span class="user-name">Avery Kim</span>
+              <span class="user-role">Owner</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="content-header">
+          <div>
+            <h1>Unified Admin Settings</h1>
+            <p>
+              Configure every workspace and assistant setting in a single, focused
+              surface. The layout mirrors the OpenAI desktop experience while
+              surfacing the rich integrations available in Open WebUI.
+            </p>
+          </div>
+          <div class="header-actions">
+            <button class="btn ghost">Preview Assistant</button>
+            <button class="btn primary">Save Changes</button>
+          </div>
+        </header>
+
+        <section class="accordion" id="settings-accordion">
+          <article class="accordion-item active" data-section="workspace">
+            <header class="accordion-trigger">
+              <div>
+                <h2>Workspace Identity</h2>
+                <p>Branding, locale, and session defaults for the assistant.</p>
+              </div>
+              <span class="chevron">▾</span>
+            </header>
+            <div class="accordion-panel">
+              <div class="grid two-column">
+                <label class="field">
+                  <span>Workspace Name</span>
+                  <input type="text" placeholder="Product AI Workspace" />
+                </label>
+                <label class="field">
+                  <span>Default Locale</span>
+                  <select>
+                    <option>English (US)</option>
+                    <option>English (UK)</option>
+                    <option>Spanish</option>
+                    <option>French</option>
+                    <option>German</option>
+                  </select>
+                </label>
+              </div>
+              <div class="grid two-column">
+                <label class="field">
+                  <span>Theme</span>
+                  <div class="chip-group">
+                    <button class="chip selected">Auto</button>
+                    <button class="chip">Dark</button>
+                    <button class="chip">Light</button>
+                  </div>
+                </label>
+                <label class="field">
+                  <span>Time Zone</span>
+                  <select>
+                    <option>UTC</option>
+                    <option>America/Los_Angeles</option>
+                    <option>America/New_York</option>
+                    <option>Europe/Berlin</option>
+                    <option>Asia/Singapore</option>
+                  </select>
+                </label>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Allow workspace personalization</span>
+                  <span class="toggle-description"
+                    >Permit members to override theme and locale settings.</span
+                  >
+                </div>
+              </label>
+            </div>
+          </article>
+
+          <article class="accordion-item" data-section="conversations">
+            <header class="accordion-trigger">
+              <div>
+                <h2>Conversation Experience</h2>
+                <p>
+                  Default chat behavior, prompt parameters, and conversation
+                  controls inspired by Open WebUI.
+                </p>
+              </div>
+              <span class="chevron">▾</span>
+            </header>
+            <div class="accordion-panel">
+              <div class="grid two-column">
+                <label class="field">
+                  <span>Primary Model</span>
+                  <select>
+                    <option>GPT-4o (OpenAI)</option>
+                    <option>Claude 3 Opus (Anthropic)</option>
+                    <option>Gemini 1.5 Pro (Google)</option>
+                    <option>Mistral Large (OpenRouter)</option>
+                    <option>Mixtral 8x7B (Local - Ollama)</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Fallback Model</span>
+                  <select>
+                    <option>GPT-4o mini</option>
+                    <option>Claude 3 Sonnet</option>
+                    <option>Gemini 1.5 Flash</option>
+                    <option>Mistral Medium</option>
+                  </select>
+                </label>
+              </div>
+              <div class="grid three-column">
+                <label class="field">
+                  <span>Temperature</span>
+                  <input type="range" min="0" max="1" step="0.1" value="0.2" />
+                </label>
+                <label class="field">
+                  <span>Top P</span>
+                  <input type="range" min="0" max="1" step="0.05" value="0.9" />
+                </label>
+                <label class="field">
+                  <span>Max Tokens</span>
+                  <input type="number" value="4096" />
+                </label>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Enable streaming responses</span>
+                  <span class="toggle-description">
+                    Stream assistant messages token by token for faster perceived
+                    responses.
+                  </span>
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Auto-summarize long threads</span>
+                  <span class="toggle-description">
+                    Summaries are appended after 50 messages using the fallback
+                    model.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </article>
+
+          <article class="accordion-item" data-section="interface">
+            <header class="accordion-trigger">
+              <div>
+                <h2>Interface & Personalization</h2>
+                <p>UI density, prompt composer options, and markdown controls.</p>
+              </div>
+              <span class="chevron">▾</span>
+            </header>
+            <div class="accordion-panel">
+              <div class="grid two-column">
+                <label class="field">
+                  <span>Composer Layout</span>
+                  <select>
+                    <option>Adaptive (OpenAI Desktop)</option>
+                    <option>Classic (Single Column)</option>
+                    <option>Minimal (Edge-to-edge)</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>UI Density</span>
+                  <div class="chip-group">
+                    <button class="chip selected">Comfortable</button>
+                    <button class="chip">Compact</button>
+                    <button class="chip">Spacious</button>
+                  </div>
+                </label>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Render markdown & code blocks</span>
+                  <span class="toggle-description"
+                    >Apply syntax highlighting and GitHub-flavored markdown.</span
+                  >
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Enable message reactions</span>
+                  <span class="toggle-description"
+                    >Allow quick emoji feedback to tune future responses.</span
+                  >
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Display system prompts inline</span>
+                  <span class="toggle-description"
+                    >Reveal applied instruction prompts to administrators for each
+                    conversation.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </article>
+
+          <article class="accordion-item" data-section="audio">
+            <header class="accordion-trigger">
+              <div>
+                <h2>Audio & Multimodal</h2>
+                <p>
+                  Speech-to-text, text-to-speech, and vision model preferences.
+                </p>
+              </div>
+              <span class="chevron">▾</span>
+            </header>
+            <div class="accordion-panel">
+              <div class="grid three-column">
+                <label class="field">
+                  <span>Speech-to-Text Provider</span>
+                  <select>
+                    <option>Whisper API</option>
+                    <option>Deepgram Nova-2</option>
+                    <option>AssemblyAI Realtime</option>
+                    <option>Vosk (Local)</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Text-to-Speech Voice</span>
+                  <select>
+                    <option>Alloy</option>
+                    <option>Nova</option>
+                    <option>Verse</option>
+                    <option>Aria</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Vision Model</span>
+                  <select>
+                    <option>GPT-4o Vision</option>
+                    <option>Gemini Vision</option>
+                    <option>llava-1.6 (Local)</option>
+                    <option>Claude 3 Opus Vision</option>
+                  </select>
+                </label>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Enable real-time voice chats</span>
+                  <span class="toggle-description"
+                    >Activates low-latency streaming with 100 ms token cadence.</span
+                  >
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Auto-transcribe uploads</span>
+                  <span class="toggle-description"
+                    >Generate transcripts for audio and video attachments.</span
+                  >
+                </div>
+              </label>
+            </div>
+          </article>
+
+          <article class="accordion-item" data-section="integrations">
+            <header class="accordion-trigger">
+              <div>
+                <h2>Model & Tool Integrations</h2>
+                <p>
+                  Connect hosted APIs, local runtimes, and automation hooks from Open
+                  WebUI's integrations catalog.
+                </p>
+              </div>
+              <span class="chevron">▾</span>
+            </header>
+            <div class="accordion-panel">
+              <div class="integration-grid">
+                <div class="integration-card">
+                  <header>
+                    <h3>OpenAI Platform</h3>
+                    <label class="toggle compact">
+                      <input type="checkbox" checked />
+                      <span class="toggle-track"></span>
+                    </label>
+                  </header>
+                  <label class="field">
+                    <span>API Key</span>
+                    <input type="password" placeholder="sk-••••••••" />
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" checked />
+                    <span class="toggle-track"></span>
+                    <div class="toggle-content">
+                      <span class="toggle-title">Enable Realtime API</span>
+                      <span class="toggle-description"
+                        >Allow streaming audio sessions via WebRTC.</span
+                      >
+                    </div>
+                  </label>
+                </div>
+                <div class="integration-card">
+                  <header>
+                    <h3>Ollama (Local)</h3>
+                    <label class="toggle compact">
+                      <input type="checkbox" checked />
+                      <span class="toggle-track"></span>
+                    </label>
+                  </header>
+                  <label class="field">
+                    <span>Endpoint</span>
+                    <input type="text" placeholder="http://localhost:11434" />
+                  </label>
+                  <label class="field">
+                    <span>Default Local Model</span>
+                    <select>
+                      <option>llama3</option>
+                      <option>phi3</option>
+                      <option>mistral</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="integration-card">
+                  <header>
+                    <h3>OpenRouter</h3>
+                    <label class="toggle compact">
+                      <input type="checkbox" />
+                      <span class="toggle-track"></span>
+                    </label>
+                  </header>
+                  <label class="field">
+                    <span>API Key</span>
+                    <input type="password" placeholder="or-••••••••" />
+                  </label>
+                  <label class="field">
+                    <span>Preferred Provider</span>
+                    <select>
+                      <option>Mistral</option>
+                      <option>Anthropic</option>
+                      <option>Cohere</option>
+                      <option>Google</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="integration-card">
+                  <header>
+                    <h3>Azure OpenAI</h3>
+                    <label class="toggle compact">
+                      <input type="checkbox" />
+                      <span class="toggle-track"></span>
+                    </label>
+                  </header>
+                  <label class="field">
+                    <span>Resource Name</span>
+                    <input type="text" placeholder="contoso-openai" />
+                  </label>
+                  <label class="field">
+                    <span>Deployment</span>
+                    <input type="text" placeholder="gpt-4o-production" />
+                  </label>
+                </div>
+                <div class="integration-card">
+                  <header>
+                    <h3>Anthropic Claude</h3>
+                    <label class="toggle compact">
+                      <input type="checkbox" />
+                      <span class="toggle-track"></span>
+                    </label>
+                  </header>
+                  <label class="field">
+                    <span>API Key</span>
+                    <input type="password" placeholder="sk-ant-••••" />
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" />
+                    <span class="toggle-track"></span>
+                    <div class="toggle-content">
+                      <span class="toggle-title">Use for compliance workflows</span>
+                      <span class="toggle-description"
+                        >Restrict to verified users for regulated industries.</span
+                      >
+                    </div>
+                  </label>
+                </div>
+                <div class="integration-card">
+                  <header>
+                    <h3>Workflow Automations</h3>
+                    <label class="toggle compact">
+                      <input type="checkbox" checked />
+                      <span class="toggle-track"></span>
+                    </label>
+                  </header>
+                  <label class="field">
+                    <span>Webhook URL</span>
+                    <input type="url" placeholder="https://hooks.zapier.com/..." />
+                  </label>
+                  <label class="field">
+                    <span>Event Filters</span>
+                    <input type="text" placeholder="conversation.created" />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="accordion-item" data-section="knowledge">
+            <header class="accordion-trigger">
+              <div>
+                <h2>Knowledge & Retrieval</h2>
+                <p>
+                  Manage document ingestion, embeddings, and retrieval augmentations.
+                </p>
+              </div>
+              <span class="chevron">▾</span>
+            </header>
+            <div class="accordion-panel">
+              <div class="grid two-column">
+                <label class="field">
+                  <span>Vector Store</span>
+                  <select>
+                    <option>pgvector (Managed)</option>
+                    <option>Pinecone</option>
+                    <option>Milvus</option>
+                    <option>Weaviate</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Embedding Model</span>
+                  <select>
+                    <option>text-embedding-3-large</option>
+                    <option>nomic-embed-text</option>
+                    <option>multilingual-e5-large</option>
+                  </select>
+                </label>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Auto-sync cloud drives</span>
+                  <span class="toggle-description"
+                    >Pull updates from Google Drive, SharePoint, and Dropbox hourly.</span
+                  >
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Enable on-demand web search</span>
+                  <span class="toggle-description"
+                    >Augment responses with live web context via Brave Search.</span
+                  >
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Enforce citation requirement</span>
+                  <span class="toggle-description"
+                    >All retrieval-augmented answers must list source references.</span
+                  >
+                </div>
+              </label>
+            </div>
+          </article>
+
+          <article class="accordion-item" data-section="security">
+            <header class="accordion-trigger">
+              <div>
+                <h2>Access, Security & Compliance</h2>
+                <p>Role management, logging, and privacy guardrails.</p>
+              </div>
+              <span class="chevron">▾</span>
+            </header>
+            <div class="accordion-panel">
+              <div class="grid two-column">
+                <label class="field">
+                  <span>Authentication Provider</span>
+                  <select>
+                    <option>OpenAI Accounts</option>
+                    <option>Okta SSO</option>
+                    <option>Azure AD</option>
+                    <option>Google Workspace</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Session Timeout</span>
+                  <select>
+                    <option>30 minutes</option>
+                    <option>1 hour</option>
+                    <option>4 hours</option>
+                    <option>24 hours</option>
+                  </select>
+                </label>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Require multifactor authentication</span>
+                  <span class="toggle-description"
+                    >Applies to owners, admins, and developers by default.</span
+                  >
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Anonymize analytics data</span>
+                  <span class="toggle-description"
+                    >Redact user identifiers before storing interaction logs.</span
+                  >
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Export audit trail</span>
+                  <span class="toggle-description"
+                    >Deliver weekly JSON exports to compliance@company.com.</span
+                  >
+                </div>
+              </label>
+            </div>
+          </article>
+
+          <article class="accordion-item" data-section="system">
+            <header class="accordion-trigger">
+              <div>
+                <h2>System & Diagnostics</h2>
+                <p>Environment metadata, rate limits, and feature flags.</p>
+              </div>
+              <span class="chevron">▾</span>
+            </header>
+            <div class="accordion-panel">
+              <div class="grid three-column">
+                <label class="field">
+                  <span>Environment</span>
+                  <select>
+                    <option>Production</option>
+                    <option>Staging</option>
+                    <option>Development</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Max Concurrent Sessions</span>
+                  <input type="number" value="250" />
+                </label>
+                <label class="field">
+                  <span>Latency Budget (ms)</span>
+                  <input type="number" value="1200" />
+                </label>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Enable beta features</span>
+                  <span class="toggle-description"
+                    >Provide administrators with upcoming OpenAI desktop UI
+                    experiments.
+                  </span>
+                </div>
+              </label>
+              <label class="toggle">
+                <input type="checkbox" />
+                <span class="toggle-track"></span>
+                <div class="toggle-content">
+                  <span class="toggle-title">Email error digests</span>
+                  <span class="toggle-description"
+                    >Send daily failure summaries to platform@company.com.</span
+                  >
+                </div>
+              </label>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/app.js"></script>
+  </body>
+</html>
