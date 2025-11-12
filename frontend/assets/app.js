@@ -1,17 +1,42 @@
 const accordion = document.getElementById('settings-accordion');
-const items = Array.from(accordion.querySelectorAll('.accordion-item'));
 
-items.forEach((item) => {
-  const trigger = item.querySelector('.accordion-trigger');
-  trigger.addEventListener('click', () => {
-    if (item.classList.contains('active')) {
-      return;
+if (accordion) {
+  const items = Array.from(accordion.querySelectorAll('.accordion-item'));
+
+  const setExpandedState = (entry, expanded) => {
+    const trigger = entry.querySelector('.accordion-trigger');
+    const panel = entry.querySelector('.accordion-panel');
+
+    trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+    if (expanded) {
+      panel.removeAttribute('hidden');
+      entry.classList.add('active');
+    } else {
+      panel.setAttribute('hidden', '');
+      entry.classList.remove('active');
     }
+  };
 
-    items.forEach((entry) => entry.classList.remove('active'));
-    item.classList.add('active');
+  items.forEach((item) => {
+    setExpandedState(item, item.classList.contains('active'));
+
+    const trigger = item.querySelector('.accordion-trigger');
+    trigger.addEventListener('click', () => {
+      if (item.classList.contains('active')) {
+        return;
+      }
+
+      items.forEach((entry) => {
+        if (entry !== item) {
+          setExpandedState(entry, false);
+        }
+      });
+
+      setExpandedState(item, true);
+    });
   });
-});
+}
 
 document.querySelectorAll('.chip-group').forEach((group) => {
   group.querySelectorAll('.chip').forEach((chip) => {
