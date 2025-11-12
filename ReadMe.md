@@ -61,7 +61,17 @@ cd backend
 python test_orchestrator.py
 ```
 
-### 4. Connect ChatGPT
+### 4. Preview the Admin Settings UI
+
+The admin console is now a React application served with Vite. Use the helper script or Make target to install dependencies (if needed) and launch the dev server for hot-reload previews:
+
+```bash
+make serve-frontend
+```
+
+By default the site is available at `http://127.0.0.1:5173/`. Override the port with `PORT=9000 make serve-frontend` if needed. The Vite server binds to `0.0.0.0` so the IDE preview panel can connect.
+
+### 5. Connect ChatGPT
 
 1. Create Custom GPT at [chat.openai.com](https://chat.openai.com)
 2. Import `chatgpt_actions.json` schema

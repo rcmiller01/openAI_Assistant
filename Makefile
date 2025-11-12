@@ -62,7 +62,10 @@ smoke: ## Run smoke tests
 	bash scripts/smoke_orchestrate.sh
 
 smoke-ps: ## Run smoke tests (PowerShell)
-	powershell -File scripts/smoke_orchestrate.ps1
+        powershell -File scripts/smoke_orchestrate.ps1
+
+serve-frontend: ## Start the React admin settings dev server for live preview
+        bash scripts/serve_frontend.sh
 
 db-shell: ## Open PostgreSQL shell
 	psql -U opa -d opa
